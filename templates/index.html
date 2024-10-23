@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultrasonic Sensor Interface</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        body {
+            background-color: #1f1f1f;
+            color: white;
+        }
+        .container {
+            margin-top: 20px;
+        }
+        .card {
+            background-color: #9FE2BF;
+        }
+        .btn-custom {
+            background-color: #f58634;
+            border: none;
+        }
+        .btn-custom:hover {
+            background-color: #e67323;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="alert alert-info" id="statusMessage" style="display: none;"></div>
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Ultrasonic Sensor</h5>
+                <button class="btn btn-custom" onclick="startSensor()">Start</button>
+                <button class="btn btn-secondary" onclick="stopSensor()">Stop</button>
+                <h6 class="mt-3">Current Time:</h6>
+                <div id="currentTime" class="h3">00:00:00</div>
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Timestamps</h5>
+                <ul id="timestampList" class="list-group">
+                    <!-- Real-time timestamps will be added here -->
+                </ul>
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">History</h5>
+                <button class="btn btn-secondary" onclick="loadHistory()">Load History</button>
+                <ul id="historyList" class="list-group mt-3">
+                    <!-- Stored history will be loaded here -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+
+        function startSensor() {
+            fetch('/start', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                showStatusMessage("Sensor started. Collecting data...", "info");
+            });
+        }
+
+        function stopSensor() {
+            fetch('/stop', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                showStatusMessage("Sensor stopped.", "info");
+            });
+        }
+
+        function showStatusMessage(message, type) {
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.textContent = message;
+            statusMessage.className = `alert alert-${type}`;
+            statusMessage.style.display = 'block';
+        }
+
+        function updateCurrentTime() {
+            const currentTime = new Date().toLocaleTimeString();
+            document.getElementById('currentTime').textContent = currentTime;
+        }
+
+        // Listen for new timestamps from the server
+        socket.on('new_timestamp', function(data) {
+            const timestampList = document.getElementById('timestampList');
+            const li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-dark';
+            li.textContent = `${data.timestamp} - Distance: ${data.distance} cm`;
+            timestampList.appendChild(li);
+        });
+
+        function loadHistory() {
+            fetch('/history', { method: 'GET' })
+            .then(response => response.json())
+            .then(data => {
+                const historyList = document.getElementById('historyList');
+                historyList.innerHTML = ''; // Clear existing history
+                data.forEach(entry => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item list-group-item-dark';
+                    li.textContent = `${entry.timestamp} - Distance: ${entry.distance} cm`;
+                    historyList.appendChild(li);
+                });
+            });
+        }
+
+        // Update the current time every second
+        setInterval(updateCurrentTime, 1000);
+    </script>
+</body>
+</html>
